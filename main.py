@@ -358,9 +358,13 @@ async def get_training_status(training_id: str):
     }
 
 # ============================================================
-# RUN SERVER
+# RUN SERVER (for local development only)
 # ============================================================
-#
+
+# Commented out for Vercel deployment
 # if __name__ == "__main__":
 #     import uvicorn
 #     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+# For Vercel: export the app
+app = app
