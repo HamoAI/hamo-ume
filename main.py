@@ -19,7 +19,7 @@ import os
 
 # JWT dependencies
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+import hashlib
 
 # ============================================================
 # CONFIGURATION
@@ -30,8 +30,12 @@ SECRET_KEY = os.getenv("JWT_SECRET_KEY", "hamo-ume-secret-key-change-in-producti
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Password hashing (simple SHA256 for Vercel compatibility)
+def hash_password(password: str) -> str:
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def verify_password_hash(plain_password: str, hashed_password: str) -> bool:
+    return hash_password(plain_password) == hashed_password
 
 # Security
 security = HTTPBearer()
@@ -227,10 +231,10 @@ invitation_codes: dict[str, str] = {}  # code -> therapist_id
 # ============================================================
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    return verify_password_hash(plain_password, hashed_password)
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    return hash_password(password)
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
