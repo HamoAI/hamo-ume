@@ -443,7 +443,15 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",           # 本地开发
+        "http://localhost:3000",           # 本地开发备用端口
+        "https://hamo-pro.vercel.app",     # Vercel 生产环境 - Pro
+        "https://hamo-client.vercel.app",  # Vercel 生产环境 - Client
+        "https://*.vercel.app",            # 所有 Vercel 部署
+        "https://hamo.ai",                 # 主域名
+        "https://*.hamo.ai",               # 子域名
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
