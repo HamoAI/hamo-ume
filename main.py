@@ -3,7 +3,7 @@ Hamo-UME: Hamo Unified Mind Engine
 Backend API Server with JWT Authentication
 
 Tech Stack: Python + FastAPI + JWT
-Version: 1.2.3
+Version: 1.2.4
 """
 
 from fastapi import FastAPI, HTTPException, Depends, status
@@ -437,8 +437,8 @@ class MockDataGenerator:
 
 app = FastAPI(
     title="Hamo-UME API",
-    description="Hamo Unified Mind Engine - Backend API v1.2.3",
-    version="1.2.3"
+    description="Hamo Unified Mind Engine - Backend API v1.2.4",
+    version="1.2.4"
 )
 
 app.add_middleware(
@@ -463,7 +463,7 @@ app.add_middleware(
 
 @app.get("/", tags=["Health"])
 async def root():
-    return {"service": "Hamo-UME", "version": "1.2.3", "status": "running"}
+    return {"service": "Hamo-UME", "version": "1.2.4", "status": "running"}
 
 # ============================================================
 # PRO (THERAPIST) AUTH ENDPOINTS
@@ -749,6 +749,42 @@ async def get_client(client_id: str, current_user: UserInDB = Depends(get_curren
 # ============================================================
 # INVITATION ENDPOINTS (Pro only)
 # ============================================================
+
+class ProInvitationGenerateRequest(BaseModel):
+    client_id: str
+    avatar_id: str
+
+class ProInvitationGenerateResponse(BaseModel):
+    invitation_code: str
+    expires_at: datetime
+
+@app.post("/api/pro/invitation/generate", response_model=ProInvitationGenerateResponse, tags=["Invitations"])
+async def generate_pro_invitation(invite_data: ProInvitationGenerateRequest, current_user: UserInDB = Depends(get_current_pro)):
+    """Generate an invitation code for a client (Pro endpoint for hamo-pro frontend)"""
+    client = client_profiles_db.get(invite_data.client_id)
+    if not client or client.therapist_id != current_user.id:
+        raise HTTPException(status_code=400, detail="Invalid client ID")
+
+    avatar = avatars_db.get(invite_data.avatar_id)
+    if not avatar or avatar.therapist_id != current_user.id:
+        raise HTTPException(status_code=400, detail="Invalid avatar ID")
+
+    code = f"HAMO-{str(uuid.uuid4())[:6].upper()}"
+    expires_at = datetime.now() + timedelta(days=7)
+
+    invitation = InvitationInDB(
+        code=code,
+        therapist_id=current_user.id,
+        client_id=invite_data.client_id,
+        avatar_id=invite_data.avatar_id,
+        expires_at=expires_at
+    )
+    invitations_db[code] = invitation
+
+    return ProInvitationGenerateResponse(
+        invitation_code=code,
+        expires_at=expires_at
+    )
 
 @app.post("/api/invitations", response_model=InvitationResponse, tags=["Invitations"])
 async def create_invitation(invite_data: InvitationCreate, current_user: UserInDB = Depends(get_current_pro)):
