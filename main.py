@@ -751,7 +751,6 @@ async def get_client(client_id: str, current_user: UserInDB = Depends(get_curren
 # ============================================================
 
 class ProInvitationGenerateRequest(BaseModel):
-    client_id: str
     avatar_id: str
 
 class ProInvitationGenerateResponse(BaseModel):
@@ -761,10 +760,6 @@ class ProInvitationGenerateResponse(BaseModel):
 @app.post("/api/pro/invitation/generate", response_model=ProInvitationGenerateResponse, tags=["Invitations"])
 async def generate_pro_invitation(invite_data: ProInvitationGenerateRequest, current_user: UserInDB = Depends(get_current_pro)):
     """Generate an invitation code for a client (Pro endpoint for hamo-pro frontend)"""
-    client = client_profiles_db.get(invite_data.client_id)
-    if not client or client.therapist_id != current_user.id:
-        raise HTTPException(status_code=400, detail="Invalid client ID")
-
     avatar = avatars_db.get(invite_data.avatar_id)
     if not avatar or avatar.therapist_id != current_user.id:
         raise HTTPException(status_code=400, detail="Invalid avatar ID")
@@ -775,7 +770,7 @@ async def generate_pro_invitation(invite_data: ProInvitationGenerateRequest, cur
     invitation = InvitationInDB(
         code=code,
         therapist_id=current_user.id,
-        client_id=invite_data.client_id,
+        client_id="",  # Client ID will be assigned when client registers
         avatar_id=invite_data.avatar_id,
         expires_at=expires_at
     )
