@@ -101,7 +101,7 @@ class ProRefreshRequest(BaseModel):
 class ClientRegister(BaseModel):
     email: EmailStr
     password: str
-    full_name: str
+    nickname: str  # Changed from full_name to match hamo-client frontend
     invitation_code: str  # Required for client registration
 
 class ClientLogin(BaseModel):
@@ -574,7 +574,7 @@ async def register_client(user_data: ClientRegister):
     new_user = UserInDB(
         id=user_id,
         email=user_data.email,
-        full_name=user_data.full_name,
+        full_name=user_data.nickname,  # Use nickname from client frontend
         role=UserRole.CLIENT,
         hashed_password=hash_password(user_data.password),
         therapist_id=invitation.therapist_id,
