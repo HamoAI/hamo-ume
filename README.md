@@ -10,7 +10,7 @@
 
 **Hamo-UME** (Hamo Unified Mind Engine) is the core backend service that powers the Hamo AI Therapy ecosystem. It provides APIs for managing user psychological profiles (AI Mind), processing therapy conversations, and collecting session feedback.
 
-!! The code was written entirely by AI!!
+## !! The code was written entirely by AI!!
 
 ### Hamo Ecosystem
 
