@@ -437,8 +437,8 @@ class MockDataGenerator:
 
 app = FastAPI(
     title="Hamo-UME API",
-    description="Hamo Unified Mind Engine - Backend API v1.2.3",
-    version="1.2.3"
+    description="Hamo Unified Mind Engine - Backend API v1.2.8",
+    version="1.2.8"
 )
 
 app.add_middleware(
