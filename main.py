@@ -3,7 +3,7 @@ Hamo-UME: Hamo Unified Mind Engine
 Backend API Server with JWT Authentication
 
 Tech Stack: Python + FastAPI + JWT
-Version: 1.3.2
+Version: 1.3.4
 """
 
 from fastapi import FastAPI, HTTPException, Depends, status
@@ -522,8 +522,8 @@ class MockDataGenerator:
 
 app = FastAPI(
     title="Hamo-UME API",
-    description="Hamo Unified Mind Engine - Backend API v1.3.2",
-    version="1.3.2"
+    description="Hamo Unified Mind Engine - Backend API v1.3.4",
+    version="1.3.4"
 )
 
 app.add_middleware(
@@ -549,7 +549,7 @@ app.add_middleware(
 
 @app.get("/", tags=["Health"])
 async def root():
-    return {"service": "Hamo-UME", "version": "1.3.2", "status": "running"}
+    return {"service": "Hamo-UME", "version": "1.3.4", "status": "running"}
 
 # ============================================================
 # PRO (THERAPIST) AUTH ENDPOINTS
@@ -1106,6 +1106,23 @@ async def connect_avatar(request: InvitationCodeRequest, current_user: UserInDB 
 # AI MIND ENDPOINTS
 # ============================================================
 
+class MindSection(str, Enum):
+    PERSONALITY = "personality"
+    EMOTION_PATTERN = "emotion_pattern"
+    COGNITION_BELIEFS = "cognition_beliefs"
+    RELATIONSHIP = "relationship"
+
+class SupervisionFeedbackRequest(BaseModel):
+    section: MindSection
+    feedback: str
+
+class SupervisionFeedbackResponse(BaseModel):
+    success: bool
+    message: str
+
+# In-memory storage for supervision feedback
+supervision_feedback_db: dict[str, list[dict]] = {}  # key: "{user_id}_{avatar_id}" -> list of feedbacks
+
 @app.get("/api/mind/{user_id}/{avatar_id}", response_model=UserAIMind, tags=["AI Mind"])
 async def get_user_ai_mind(user_id: str, avatar_id: str, current_user: UserInDB = Depends(get_current_user)):
     """Get User's AI Mind Profile"""
@@ -1115,6 +1132,45 @@ async def get_user_ai_mind(user_id: str, avatar_id: str, current_user: UserInDB 
     user_mind = MockDataGenerator.generate_user_ai_mind(user_id, avatar_id)
     mind_cache[cache_key] = user_mind
     return user_mind
+
+@app.post("/api/mind/{user_id}/{avatar_id}/supervise", response_model=SupervisionFeedbackResponse, tags=["AI Mind"])
+async def submit_supervision_feedback(
+    user_id: str,
+    avatar_id: str,
+    request: SupervisionFeedbackRequest,
+    current_user: UserInDB = Depends(get_current_pro)
+):
+    """Submit supervision feedback for a client's AI Mind profile (Pro only)"""
+    # Verify the user exists
+    user = users_db.get(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Verify the avatar exists and belongs to current pro
+    avatar = avatars_db.get(avatar_id)
+    if not avatar:
+        raise HTTPException(status_code=404, detail="Avatar not found")
+    if avatar.therapist_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to supervise this avatar")
+
+    # Store the feedback
+    cache_key = f"{user_id}_{avatar_id}"
+    if cache_key not in supervision_feedback_db:
+        supervision_feedback_db[cache_key] = []
+
+    supervision_feedback_db[cache_key].append({
+        "id": str(uuid.uuid4()),
+        "section": request.section.value,
+        "feedback": request.feedback,
+        "pro_id": current_user.id,
+        "pro_name": current_user.full_name,
+        "created_at": datetime.now().isoformat()
+    })
+
+    return SupervisionFeedbackResponse(
+        success=True,
+        message="Supervision feedback received"
+    )
 
 # ============================================================
 # FEEDBACK ENDPOINTS (Client only)
