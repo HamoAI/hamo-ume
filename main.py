@@ -3,7 +3,7 @@ Hamo-UME: Hamo Unified Mind Engine
 Backend API Server with JWT Authentication
 
 Tech Stack: Python + FastAPI + JWT
-Version: 1.3.1
+Version: 1.3.2
 """
 
 from fastapi import FastAPI, HTTPException, Depends, status
@@ -248,6 +248,7 @@ class ClientProfileInDB(BaseModel):
 
 class ClientProfileResponse(ClientProfileInDB):
     avatar_name: Optional[str] = None
+    connected_at: Optional[datetime] = None  # When client registered via invitation code
 
 # ============================================================
 # CLIENT-AVATAR CONNECTION MODELS (Many-to-Many)
@@ -457,6 +458,18 @@ def create_client_avatar_connection(client_user_id: str, avatar_id: str) -> Clie
     client_avatar_connections_db[connection_id] = connection
     return connection
 
+def get_client_connected_at(client_profile: ClientProfileInDB) -> Optional[datetime]:
+    """Get the connected_at time for a client profile by finding when a real user registered"""
+    # Find the user linked to this client profile
+    if not client_profile.user_id:
+        return None  # No real user has registered yet
+
+    # Find the connection for this user
+    for conn in client_avatar_connections_db.values():
+        if conn.client_id == client_profile.user_id and conn.is_active:
+            return conn.connected_at
+    return None
+
 # ============================================================
 # MOCK DATA GENERATOR
 # ============================================================
@@ -509,8 +522,8 @@ class MockDataGenerator:
 
 app = FastAPI(
     title="Hamo-UME API",
-    description="Hamo Unified Mind Engine - Backend API v1.3.1",
-    version="1.3.1"
+    description="Hamo Unified Mind Engine - Backend API v1.3.2",
+    version="1.3.2"
 )
 
 app.add_middleware(
@@ -536,7 +549,7 @@ app.add_middleware(
 
 @app.get("/", tags=["Health"])
 async def root():
-    return {"service": "Hamo-UME", "version": "1.3.1", "status": "running"}
+    return {"service": "Hamo-UME", "version": "1.3.2", "status": "running"}
 
 # ============================================================
 # PRO (THERAPIST) AUTH ENDPOINTS
@@ -861,7 +874,12 @@ async def get_clients(current_user: UserInDB = Depends(get_current_pro)):
     for c in client_profiles_db.values():
         if c.therapist_id == current_user.id:
             avatar = avatars_db.get(c.avatar_id)
-            result.append(ClientProfileResponse(**c.model_dump(), avatar_name=avatar.name if avatar else None))
+            connected_at = get_client_connected_at(c)
+            result.append(ClientProfileResponse(
+                **c.model_dump(),
+                avatar_name=avatar.name if avatar else None,
+                connected_at=connected_at
+            ))
     return result
 
 @app.post("/api/clients", response_model=ClientProfileResponse, tags=["Clients"])
@@ -897,7 +915,12 @@ async def get_client(client_id: str, current_user: UserInDB = Depends(get_curren
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     avatar = avatars_db.get(client.avatar_id)
-    return ClientProfileResponse(**client.model_dump(), avatar_name=avatar.name if avatar else None)
+    connected_at = get_client_connected_at(client)
+    return ClientProfileResponse(
+        **client.model_dump(),
+        avatar_name=avatar.name if avatar else None,
+        connected_at=connected_at
+    )
 
 # ============================================================
 # INVITATION ENDPOINTS (Pro only)
@@ -1203,7 +1226,12 @@ async def get_portal_pro_user_details(pro_id: str):
     for c in client_profiles_db.values():
         if c.therapist_id == pro_id:
             avatar = avatars_db.get(c.avatar_id)
-            user_clients.append(ClientProfileResponse(**c.model_dump(), avatar_name=avatar.name if avatar else None))
+            connected_at = get_client_connected_at(c)
+            user_clients.append(ClientProfileResponse(
+                **c.model_dump(),
+                avatar_name=avatar.name if avatar else None,
+                connected_at=connected_at
+            ))
 
     return ProUserDetail(
         id=user.id,
