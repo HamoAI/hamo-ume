@@ -3,7 +3,7 @@ Hamo-UME: Hamo Unified Mind Engine
 Backend API Server with JWT Authentication
 
 Tech Stack: Python + FastAPI + JWT
-Version: 1.3.0
+Version: 1.3.1
 """
 
 from fastapi import FastAPI, HTTPException, Depends, status
@@ -162,9 +162,21 @@ class ProTokenResponse(BaseModel):
     user: ProResponse
 
 class ConnectedAvatar(BaseModel):
+    """Legacy model for backward compatibility"""
     id: str
     name: str
     therapist_name: Optional[str] = None
+
+class ConnectedAvatarDetail(BaseModel):
+    """Detailed connected avatar information for multi-avatar support"""
+    id: str
+    avatar_name: str
+    pro_name: str
+    theory: str
+    specialty: Optional[str] = None
+    avatar_picture: Optional[str] = None
+    last_chat_time: datetime
+    welcome_message: Optional[str] = None
 
 class ClientTokenResponse(BaseModel):
     access_token: str
@@ -172,7 +184,7 @@ class ClientTokenResponse(BaseModel):
     token_type: str = "bearer"
     expires_in: int
     user: ClientResponse
-    connected_avatar: Optional[ConnectedAvatar] = None
+    connected_avatars: list[ConnectedAvatarDetail] = Field(default_factory=list)  # Changed to list
 
 # ============================================================
 # AVATAR MODELS
@@ -235,6 +247,19 @@ class ClientProfileInDB(BaseModel):
 
 class ClientProfileResponse(ClientProfileInDB):
     avatar_name: Optional[str] = None
+
+# ============================================================
+# CLIENT-AVATAR CONNECTION MODELS (Many-to-Many)
+# ============================================================
+
+class ClientAvatarConnectionInDB(BaseModel):
+    """Represents a connection between a client and an avatar"""
+    id: str
+    client_id: str  # User ID (not client profile ID)
+    avatar_id: str
+    connected_at: datetime = Field(default_factory=datetime.now)
+    last_chat_time: datetime = Field(default_factory=datetime.now)
+    is_active: bool = True
 
 # ============================================================
 # INVITATION MODELS
@@ -336,6 +361,7 @@ users_db: dict[str, UserInDB] = {}
 avatars_db: dict[str, AvatarInDB] = {}
 client_profiles_db: dict[str, ClientProfileInDB] = {}
 invitations_db: dict[str, InvitationInDB] = {}
+client_avatar_connections_db: dict[str, ClientAvatarConnectionInDB] = {}  # connection_id -> connection
 mind_cache: dict[str, UserAIMind] = {}
 feedback_storage: list[dict] = []
 pro_refresh_tokens_db: dict[str, str] = {}  # refresh_token -> user_id
@@ -392,6 +418,45 @@ async def get_current_client(current_user: UserInDB = Depends(get_current_user))
     return current_user
 
 # ============================================================
+# HELPER FUNCTIONS
+# ============================================================
+
+def get_connected_avatars_for_client(client_user_id: str) -> list[ConnectedAvatarDetail]:
+    """Get all connected avatars for a client user"""
+    connected_avatars = []
+    for conn in client_avatar_connections_db.values():
+        if conn.client_id == client_user_id and conn.is_active:
+            avatar = avatars_db.get(conn.avatar_id)
+            if avatar:
+                therapist = users_db.get(avatar.therapist_id)
+                connected_avatars.append(ConnectedAvatarDetail(
+                    id=avatar.id,
+                    avatar_name=avatar.name,
+                    pro_name=therapist.full_name if therapist else "Therapist",
+                    theory=avatar.theory or "N/A",
+                    specialty=avatar.methodology,  # Using methodology as specialty
+                    avatar_picture=None,  # Avatar picture not yet implemented
+                    last_chat_time=conn.last_chat_time,
+                    welcome_message=avatar.description  # Using description as welcome message
+                ))
+    return connected_avatars
+
+def create_client_avatar_connection(client_user_id: str, avatar_id: str) -> ClientAvatarConnectionInDB:
+    """Create a new client-avatar connection"""
+    connection_id = str(uuid.uuid4())
+    now = datetime.now()
+    connection = ClientAvatarConnectionInDB(
+        id=connection_id,
+        client_id=client_user_id,
+        avatar_id=avatar_id,
+        connected_at=now,
+        last_chat_time=now,
+        is_active=True
+    )
+    client_avatar_connections_db[connection_id] = connection
+    return connection
+
+# ============================================================
 # MOCK DATA GENERATOR
 # ============================================================
 
@@ -443,8 +508,8 @@ class MockDataGenerator:
 
 app = FastAPI(
     title="Hamo-UME API",
-    description="Hamo Unified Mind Engine - Backend API v1.3.0",
-    version="1.3.0"
+    description="Hamo Unified Mind Engine - Backend API v1.3.1",
+    version="1.3.1"
 )
 
 app.add_middleware(
@@ -470,7 +535,7 @@ app.add_middleware(
 
 @app.get("/", tags=["Health"])
 async def root():
-    return {"service": "Hamo-UME", "version": "1.3.0", "status": "running"}
+    return {"service": "Hamo-UME", "version": "1.3.1", "status": "running"}
 
 # ============================================================
 # PRO (THERAPIST) AUTH ENDPOINTS
@@ -623,16 +688,11 @@ async def register_client(user_data: ClientRegister):
     # Mark invitation as used
     invitation.is_used = True
 
-    # Get connected avatar info
-    avatar = avatars_db.get(invitation.avatar_id)
-    therapist = users_db.get(invitation.therapist_id)
-    connected_avatar = None
-    if avatar:
-        connected_avatar = ConnectedAvatar(
-            id=avatar.id,
-            name=avatar.name,
-            therapist_name=therapist.full_name if therapist else None
-        )
+    # Create client-avatar connection (multi-avatar support)
+    create_client_avatar_connection(user_id, invitation.avatar_id)
+
+    # Get all connected avatars for this client
+    connected_avatars = get_connected_avatars_for_client(user_id)
 
     access_token = create_access_token({"sub": user_id, "email": user_data.email, "role": UserRole.CLIENT})
     refresh_token = create_refresh_token(user_id, UserRole.CLIENT)
@@ -642,7 +702,7 @@ async def register_client(user_data: ClientRegister):
         refresh_token=refresh_token,
         expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         user=ClientResponse(**new_user.model_dump()),
-        connected_avatar=connected_avatar
+        connected_avatars=connected_avatars
     )
 
 @app.post("/api/auth/loginClient", response_model=ClientTokenResponse, tags=["Auth - Client"])
@@ -653,47 +713,55 @@ async def login_client(credentials: ClientLogin):
         if u.email == credentials.email and u.role == UserRole.CLIENT:
             user = u
             break
-    
+
     if not user or not verify_password(credentials.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     if not user.is_active:
         raise HTTPException(status_code=401, detail="Account inactive")
-    
+
+    # Get all connected avatars for this client
+    connected_avatars = get_connected_avatars_for_client(user.id)
+
     access_token = create_access_token({"sub": user.id, "email": user.email, "role": UserRole.CLIENT})
     refresh_token = create_refresh_token(user.id, UserRole.CLIENT)
-    
+
     return ClientTokenResponse(
         access_token=access_token,
         refresh_token=refresh_token,
         expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        user=ClientResponse(**user.model_dump())
+        user=ClientResponse(**user.model_dump()),
+        connected_avatars=connected_avatars
     )
 
 @app.post("/api/auth/refreshClient", response_model=ClientTokenResponse, tags=["Auth - Client"])
 async def refresh_client_token(request: ClientRefreshRequest):
     """Refresh Client access token"""
     payload = decode_token(request.refresh_token)
-    
+
     if payload.get("type") != "refresh" or payload.get("role") != UserRole.CLIENT:
         raise HTTPException(status_code=401, detail="Invalid Client refresh token")
-    
+
     user_id = payload.get("sub")
     if request.refresh_token not in client_refresh_tokens_db:
         raise HTTPException(status_code=401, detail="Refresh token revoked")
-    
+
     user = users_db.get(user_id)
     if not user or user.role != UserRole.CLIENT:
         raise HTTPException(status_code=401, detail="Client user not found")
-    
+
+    # Get all connected avatars for this client
+    connected_avatars = get_connected_avatars_for_client(user.id)
+
     del client_refresh_tokens_db[request.refresh_token]
     access_token = create_access_token({"sub": user.id, "email": user.email, "role": UserRole.CLIENT})
     new_refresh_token = create_refresh_token(user.id, UserRole.CLIENT)
-    
+
     return ClientTokenResponse(
         access_token=access_token,
         refresh_token=new_refresh_token,
         expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        user=ClientResponse(**user.model_dump())
+        user=ClientResponse(**user.model_dump()),
+        connected_avatars=connected_avatars
     )
 
 # ============================================================
@@ -908,6 +976,69 @@ async def validate_client_invitation(request: ClientInvitationValidateRequest):
             "therapist_name": therapist.full_name if therapist else None
         }
     }
+
+# ============================================================
+# CLIENT AVATAR ENDPOINTS (Multi-Avatar Support)
+# ============================================================
+
+class InvitationCodeRequest(BaseModel):
+    invitation_code: str
+
+class ConnectAvatarResponse(BaseModel):
+    avatar: ConnectedAvatarDetail
+
+@app.get("/api/client/avatars", response_model=list[ConnectedAvatarDetail], tags=["Client Avatars"])
+async def get_client_avatars(current_user: UserInDB = Depends(get_current_client)):
+    """Get all avatars connected to the current client"""
+    return get_connected_avatars_for_client(current_user.id)
+
+@app.post("/api/client/avatar/connect", response_model=ConnectAvatarResponse, tags=["Client Avatars"])
+async def connect_avatar(request: InvitationCodeRequest, current_user: UserInDB = Depends(get_current_client)):
+    """Connect to a new avatar using an invitation code"""
+    # Validate invitation code
+    invitation = invitations_db.get(request.invitation_code)
+    if not invitation:
+        raise HTTPException(status_code=404, detail="Invalid invitation code")
+    if invitation.is_used:
+        raise HTTPException(status_code=400, detail="Invitation code already used")
+    if invitation.expires_at < datetime.now():
+        raise HTTPException(status_code=400, detail="Invitation code expired")
+
+    # Check if already connected to this avatar
+    for conn in client_avatar_connections_db.values():
+        if conn.client_id == current_user.id and conn.avatar_id == invitation.avatar_id and conn.is_active:
+            raise HTTPException(status_code=400, detail="Already connected to this avatar")
+
+    # Create new connection (without removing existing connections - multi-avatar support)
+    create_client_avatar_connection(current_user.id, invitation.avatar_id)
+
+    # Mark invitation as used
+    invitation.is_used = True
+
+    # Get avatar details for response
+    avatar = avatars_db.get(invitation.avatar_id)
+    therapist = users_db.get(invitation.therapist_id)
+
+    if not avatar:
+        raise HTTPException(status_code=404, detail="Avatar not found")
+
+    # Find the connection we just created to get last_chat_time
+    connected_avatar = None
+    for conn in client_avatar_connections_db.values():
+        if conn.client_id == current_user.id and conn.avatar_id == invitation.avatar_id:
+            connected_avatar = ConnectedAvatarDetail(
+                id=avatar.id,
+                avatar_name=avatar.name,
+                pro_name=therapist.full_name if therapist else "Therapist",
+                theory=avatar.theory or "N/A",
+                specialty=avatar.methodology,
+                avatar_picture=None,
+                last_chat_time=conn.last_chat_time,
+                welcome_message=avatar.description
+            )
+            break
+
+    return ConnectAvatarResponse(avatar=connected_avatar)
 
 # ============================================================
 # AI MIND ENDPOINTS
