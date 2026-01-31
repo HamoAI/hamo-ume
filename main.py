@@ -184,7 +184,8 @@ class ClientTokenResponse(BaseModel):
     token_type: str = "bearer"
     expires_in: int
     user: ClientResponse
-    connected_avatars: list[ConnectedAvatarDetail] = Field(default_factory=list)  # Changed to list
+    connected_avatars: list[ConnectedAvatarDetail] = Field(default_factory=list)  # Multi-avatar support
+    connected_avatar: Optional[ConnectedAvatar] = None  # Legacy field for backward compatibility
 
 # ============================================================
 # AVATAR MODELS
@@ -694,6 +695,17 @@ async def register_client(user_data: ClientRegister):
     # Get all connected avatars for this client
     connected_avatars = get_connected_avatars_for_client(user_id)
 
+    # Get legacy connected_avatar for backward compatibility
+    avatar = avatars_db.get(invitation.avatar_id)
+    therapist = users_db.get(invitation.therapist_id)
+    connected_avatar = None
+    if avatar:
+        connected_avatar = ConnectedAvatar(
+            id=avatar.id,
+            name=avatar.name,
+            therapist_name=therapist.full_name if therapist else None
+        )
+
     access_token = create_access_token({"sub": user_id, "email": user_data.email, "role": UserRole.CLIENT})
     refresh_token = create_refresh_token(user_id, UserRole.CLIENT)
 
@@ -702,7 +714,8 @@ async def register_client(user_data: ClientRegister):
         refresh_token=refresh_token,
         expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         user=ClientResponse(**new_user.model_dump()),
-        connected_avatars=connected_avatars
+        connected_avatars=connected_avatars,
+        connected_avatar=connected_avatar
     )
 
 @app.post("/api/auth/loginClient", response_model=ClientTokenResponse, tags=["Auth - Client"])
@@ -722,6 +735,18 @@ async def login_client(credentials: ClientLogin):
     # Get all connected avatars for this client
     connected_avatars = get_connected_avatars_for_client(user.id)
 
+    # Get legacy connected_avatar for backward compatibility (first/primary avatar)
+    connected_avatar = None
+    if user.avatar_id:
+        avatar = avatars_db.get(user.avatar_id)
+        therapist = users_db.get(user.therapist_id) if user.therapist_id else None
+        if avatar:
+            connected_avatar = ConnectedAvatar(
+                id=avatar.id,
+                name=avatar.name,
+                therapist_name=therapist.full_name if therapist else None
+            )
+
     access_token = create_access_token({"sub": user.id, "email": user.email, "role": UserRole.CLIENT})
     refresh_token = create_refresh_token(user.id, UserRole.CLIENT)
 
@@ -730,7 +755,8 @@ async def login_client(credentials: ClientLogin):
         refresh_token=refresh_token,
         expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         user=ClientResponse(**user.model_dump()),
-        connected_avatars=connected_avatars
+        connected_avatars=connected_avatars,
+        connected_avatar=connected_avatar
     )
 
 @app.post("/api/auth/refreshClient", response_model=ClientTokenResponse, tags=["Auth - Client"])
@@ -752,6 +778,18 @@ async def refresh_client_token(request: ClientRefreshRequest):
     # Get all connected avatars for this client
     connected_avatars = get_connected_avatars_for_client(user.id)
 
+    # Get legacy connected_avatar for backward compatibility (first/primary avatar)
+    connected_avatar = None
+    if user.avatar_id:
+        avatar = avatars_db.get(user.avatar_id)
+        therapist = users_db.get(user.therapist_id) if user.therapist_id else None
+        if avatar:
+            connected_avatar = ConnectedAvatar(
+                id=avatar.id,
+                name=avatar.name,
+                therapist_name=therapist.full_name if therapist else None
+            )
+
     del client_refresh_tokens_db[request.refresh_token]
     access_token = create_access_token({"sub": user.id, "email": user.email, "role": UserRole.CLIENT})
     new_refresh_token = create_refresh_token(user.id, UserRole.CLIENT)
@@ -761,7 +799,8 @@ async def refresh_client_token(request: ClientRefreshRequest):
         refresh_token=new_refresh_token,
         expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         user=ClientResponse(**user.model_dump()),
-        connected_avatars=connected_avatars
+        connected_avatars=connected_avatars,
+        connected_avatar=connected_avatar
     )
 
 # ============================================================
