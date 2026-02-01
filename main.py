@@ -3,7 +3,7 @@ Hamo-UME: Hamo Unified Mind Engine
 Backend API Server with JWT Authentication
 
 Tech Stack: Python + FastAPI + JWT
-Version: 1.3.7
+Version: 1.3.8
 """
 
 from fastapi import FastAPI, HTTPException, Depends, status
@@ -593,8 +593,8 @@ class MockDataGenerator:
 
 app = FastAPI(
     title="Hamo-UME API",
-    description="Hamo Unified Mind Engine - Backend API v1.3.7",
-    version="1.3.7"
+    description="Hamo Unified Mind Engine - Backend API v1.3.8",
+    version="1.3.8"
 )
 
 app.add_middleware(
@@ -620,7 +620,7 @@ app.add_middleware(
 
 @app.get("/", tags=["Health"])
 async def root():
-    return {"service": "Hamo-UME", "version": "1.3.7", "status": "running"}
+    return {"service": "Hamo-UME", "version": "1.3.8", "status": "running"}
 
 # ============================================================
 # PRO (THERAPIST) AUTH ENDPOINTS
@@ -629,9 +629,10 @@ async def root():
 @app.post("/api/auth/registerPro", response_model=ProTokenResponse, tags=["Auth - Pro"])
 async def register_pro(user_data: ProRegister):
     """Register a new Pro (Therapist) account"""
+    # Only check for duplicate email among Pro users (Pro and Client are independent systems)
     for u in users_db.values():
-        if u.email == user_data.email:
-            raise HTTPException(status_code=400, detail="Email already registered")
+        if u.email == user_data.email and u.role == UserRole.THERAPIST:
+            raise HTTPException(status_code=400, detail="Email already registered as Pro")
     
     user_id = str(uuid.uuid4())
     new_user = UserInDB(
@@ -714,9 +715,10 @@ async def refresh_pro_token(request: ProRefreshRequest):
 @app.post("/api/auth/registerClient", response_model=ClientTokenResponse, tags=["Auth - Client"])
 async def register_client(user_data: ClientRegister):
     """Register a new Client account (requires invitation code)"""
+    # Only check for duplicate email among Client users (Pro and Client are independent systems)
     for u in users_db.values():
-        if u.email == user_data.email:
-            raise HTTPException(status_code=400, detail="Email already registered")
+        if u.email == user_data.email and u.role == UserRole.CLIENT:
+            raise HTTPException(status_code=400, detail="Email already registered as Client")
     
     # Validate invitation code
     invitation = invitations_db.get(user_data.invitation_code)
