@@ -954,6 +954,42 @@ async def get_avatar(avatar_id: str, current_user: UserInDB = Depends(get_curren
     return AvatarResponse(**avatar.model_dump())
 
 # ============================================================
+# DISCOVER ENDPOINTS (Public for Client Discovery)
+# ============================================================
+
+class DiscoverAvatarResponse(BaseModel):
+    """Avatar response for Discover page with Pro info"""
+    id: str
+    name: str
+    specialty: str
+    therapeutic_approaches: list[str] = Field(default_factory=list)
+    about: str = ""
+    experience_years: int = 0
+    experience_months: int = 0
+    pro_name: str
+    avatar_picture: Optional[str] = None
+
+@app.get("/api/discover/avatars", response_model=list[DiscoverAvatarResponse], tags=["Discover"])
+async def discover_avatars():
+    """Get all public avatars for Client discovery page (no authentication required)"""
+    result = []
+    for avatar in avatars_db.values():
+        if avatar.is_active:
+            therapist = users_db.get(avatar.therapist_id)
+            result.append(DiscoverAvatarResponse(
+                id=avatar.id,
+                name=avatar.name,
+                specialty=avatar.specialty,
+                therapeutic_approaches=avatar.therapeutic_approaches,
+                about=avatar.about,
+                experience_years=avatar.experience_years,
+                experience_months=avatar.experience_months,
+                pro_name=therapist.full_name if therapist else "Therapist",
+                avatar_picture=None
+            ))
+    return result
+
+# ============================================================
 # AI MIND ENDPOINTS (Pro creates client AI Mind)
 # ============================================================
 
