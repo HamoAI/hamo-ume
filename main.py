@@ -3,7 +3,7 @@ Hamo-UME: Hamo Unified Mind Engine
 Backend API Server with JWT Authentication
 
 Tech Stack: Python + FastAPI + JWT
-Version: 1.3.7
+Version: 1.4.4
 """
 
 from fastapi import FastAPI, HTTPException, Depends, status
@@ -199,6 +199,15 @@ class AvatarCreate(BaseModel):
     experience_years: int = Field(..., ge=0, description="Years of experience (required)")
     experience_months: int = Field(..., ge=0, le=11, description="Months of experience (required, 0-11)")
 
+class AvatarUpdate(BaseModel):
+    """Model for updating an avatar - all fields optional"""
+    name: Optional[str] = Field(None, min_length=1, description="Avatar name")
+    specialty: Optional[str] = Field(None, min_length=1, description="Specialty area")
+    therapeutic_approaches: Optional[list[str]] = Field(None, min_length=1, max_length=3, description="Therapeutic approaches (1-3)")
+    about: Optional[str] = Field(None, min_length=1, max_length=280, description="About description (max 280 chars)")
+    experience_years: Optional[int] = Field(None, ge=0, description="Years of experience")
+    experience_months: Optional[int] = Field(None, ge=0, le=11, description="Months of experience (0-11)")
+
 class AvatarInDB(BaseModel):
     id: str
     therapist_id: str
@@ -209,11 +218,25 @@ class AvatarInDB(BaseModel):
     experience_years: int = 0
     experience_months: int = 0
     created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: Optional[datetime] = None
     is_active: bool = True
     client_count: int = 0
 
 class AvatarResponse(AvatarInDB):
     pass
+
+class AvatarUpdateResponse(BaseModel):
+    """Response model for avatar update with pro_id"""
+    id: str
+    name: str
+    specialty: str
+    therapeutic_approaches: list[str] = Field(default_factory=list)
+    about: str = ""
+    experience_years: int = 0
+    experience_months: int = 0
+    pro_id: str
+    created_at: datetime
+    updated_at: Optional[datetime] = None
 
 # ============================================================
 # CLIENT PROFILE MODELS
@@ -595,8 +618,8 @@ class MockDataGenerator:
 
 app = FastAPI(
     title="Hamo-UME API",
-    description="Hamo Unified Mind Engine - Backend API v1.3.7",
-    version="1.3.7"
+    description="Hamo Unified Mind Engine - Backend API v1.4.4",
+    version="1.4.4"
 )
 
 app.add_middleware(
@@ -622,7 +645,7 @@ app.add_middleware(
 
 @app.get("/", tags=["Health"])
 async def root():
-    return {"service": "Hamo-UME", "version": "1.3.7", "status": "running"}
+    return {"service": "Hamo-UME", "version": "1.4.4", "status": "running"}
 
 # ============================================================
 # PRO (THERAPIST) AUTH ENDPOINTS
@@ -952,6 +975,50 @@ async def get_avatar(avatar_id: str, current_user: UserInDB = Depends(get_curren
     if not avatar:
         raise HTTPException(status_code=404, detail="Avatar not found")
     return AvatarResponse(**avatar.model_dump())
+
+@app.put("/api/avatars/{avatar_id}", response_model=AvatarUpdateResponse, tags=["Avatars"])
+async def update_avatar(avatar_id: str, avatar_data: AvatarUpdate, current_user: UserInDB = Depends(get_current_pro)):
+    """Update an existing avatar (Pro only, must be the owner)"""
+    # Check if avatar exists
+    avatar = avatars_db.get(avatar_id)
+    if not avatar:
+        raise HTTPException(status_code=404, detail="Avatar not found")
+
+    # Check ownership - only the Pro who created the avatar can update it
+    if avatar.therapist_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You can only update your own avatars")
+
+    # Update only provided fields
+    update_data = avatar_data.model_dump(exclude_unset=True)
+
+    # Validate therapeutic_approaches if provided
+    if "therapeutic_approaches" in update_data:
+        if len(update_data["therapeutic_approaches"]) < 1 or len(update_data["therapeutic_approaches"]) > 3:
+            raise HTTPException(status_code=400, detail="therapeutic_approaches must have 1-3 items")
+
+    # Validate about if provided
+    if "about" in update_data and len(update_data["about"]) > 280:
+        raise HTTPException(status_code=400, detail="about must be max 280 characters")
+
+    # Apply updates
+    for field, value in update_data.items():
+        setattr(avatar, field, value)
+
+    # Set updated_at timestamp
+    avatar.updated_at = datetime.now()
+
+    return AvatarUpdateResponse(
+        id=avatar.id,
+        name=avatar.name,
+        specialty=avatar.specialty,
+        therapeutic_approaches=avatar.therapeutic_approaches,
+        about=avatar.about,
+        experience_years=avatar.experience_years,
+        experience_months=avatar.experience_months,
+        pro_id=avatar.therapist_id,
+        created_at=avatar.created_at,
+        updated_at=avatar.updated_at
+    )
 
 # ============================================================
 # DISCOVER ENDPOINTS (Public for Client Discovery)
