@@ -3,7 +3,7 @@ Hamo-UME: Hamo Unified Mind Engine
 Backend API Server with JWT Authentication
 
 Tech Stack: Python + FastAPI + JWT
-Version: 1.4.4
+Version: 1.4.5
 """
 
 from fastapi import FastAPI, HTTPException, Depends, status
@@ -618,8 +618,8 @@ class MockDataGenerator:
 
 app = FastAPI(
     title="Hamo-UME API",
-    description="Hamo Unified Mind Engine - Backend API v1.4.4",
-    version="1.4.4"
+    description="Hamo Unified Mind Engine - Backend API v1.4.5",
+    version="1.4.5"
 )
 
 app.add_middleware(
@@ -645,7 +645,7 @@ app.add_middleware(
 
 @app.get("/", tags=["Health"])
 async def root():
-    return {"service": "Hamo-UME", "version": "1.4.4", "status": "running"}
+    return {"service": "Hamo-UME", "version": "1.4.5", "status": "running"}
 
 # ============================================================
 # PRO (THERAPIST) AUTH ENDPOINTS
@@ -1506,15 +1506,55 @@ class SupervisionFeedbackResponse(BaseModel):
 # In-memory storage for supervision feedback
 supervision_feedback_db: dict[str, list[dict]] = {}  # key: "{user_id}_{avatar_id}" -> list of feedbacks
 
-@app.get("/api/mind/{user_id}/{avatar_id}", response_model=UserAIMind, tags=["AI Mind"])
+class AIMindByUserAvatarResponse(BaseModel):
+    """Response for GET /api/mind/{user_id}/{avatar_id}"""
+    id: str
+    name: str
+    sex: Optional[str] = None
+    age: Optional[int] = None
+    avatar_id: str
+    avatar_name: Optional[str] = None
+    personality: Optional[PersonalityInput] = None
+    emotion_pattern: Optional[EmotionPatternInput] = None
+    cognition_beliefs: Optional[CognitionBeliefsInput] = None
+    relationship_manipulations: Optional[RelationshipInput] = None
+    goals: Optional[str] = None
+    therapy_principles: Optional[str] = None
+    sessions: int = 0
+    avg_time: int = 0
+
+@app.get("/api/mind/{user_id}/{avatar_id}", response_model=AIMindByUserAvatarResponse, tags=["AI Mind"])
 async def get_user_ai_mind(user_id: str, avatar_id: str, current_user: UserInDB = Depends(get_current_user)):
-    """Get User's AI Mind Profile"""
-    cache_key = f"{user_id}_{avatar_id}"
-    if cache_key in mind_cache:
-        return mind_cache[cache_key]
-    user_mind = MockDataGenerator.generate_user_ai_mind(user_id, avatar_id)
-    mind_cache[cache_key] = user_mind
-    return user_mind
+    """Get AI Mind by user_id and avatar_id pair"""
+    # Find AI Mind by user_id and avatar_id
+    found_mind = None
+    for mind in ai_minds_db.values():
+        if mind.user_id == user_id and mind.avatar_id == avatar_id:
+            found_mind = mind
+            break
+
+    if not found_mind:
+        raise HTTPException(status_code=404, detail="AI Mind not found for this user and avatar pair")
+
+    # Get avatar name
+    avatar = avatars_db.get(avatar_id)
+
+    return AIMindByUserAvatarResponse(
+        id=found_mind.id,
+        name=found_mind.name,
+        sex=found_mind.sex,
+        age=found_mind.age,
+        avatar_id=found_mind.avatar_id,
+        avatar_name=avatar.name if avatar else None,
+        personality=found_mind.personality,
+        emotion_pattern=found_mind.emotion_pattern,
+        cognition_beliefs=found_mind.cognition_beliefs,
+        relationship_manipulations=found_mind.relationship_manipulations,
+        goals=found_mind.goals,
+        therapy_principles=found_mind.therapy_principles,
+        sessions=found_mind.sessions,
+        avg_time=found_mind.avg_time
+    )
 
 @app.post("/api/mind/{user_id}/{avatar_id}/supervise", response_model=SupervisionFeedbackResponse, tags=["AI Mind"])
 async def submit_supervision_feedback(
