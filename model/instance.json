@@ -1,0 +1,123 @@
+{
+  "version": "v1.0.0",
+  "module": "HUME.PersonalityTraitDetector",
+  "language": "en-zh",
+
+  "axes": {
+    "x": { "neg": "introvert", "pos": "extrovert" },
+    "y": { "neg": "people", "pos": "task" }
+  },
+
+  "signals": {
+    "quadrant": {
+      "task": [
+        { "t": "data", "w": 1.1 }, { "t": "facts", "w": 1.1 }, { "t": "logic", "w": 1.0 },
+        { "t": "analyze", "w": 1.0 }, { "t": "verify", "w": 1.2 },
+        { "t": "plan", "w": 1.0 }, { "t": "process", "w": 0.9 },
+        { "t": "result", "w": 1.0 }, { "t": "standard", "w": 1.0 },
+
+        { "t": "数据", "w": 1.1 }, { "t": "事实", "w": 1.1 }, { "t": "逻辑", "w": 1.0 },
+        { "t": "分析", "w": 1.0 }, { "t": "验证", "w": 1.2 },
+        { "t": "计划", "w": 1.0 }, { "t": "流程", "w": 0.9 },
+        { "t": "结果", "w": 1.0 }, { "t": "标准", "w": 1.0 }
+      ],
+
+      "people": [
+        { "t": "support", "w": 1.1 }, { "t": "trust", "w": 1.1 },
+        { "t": "understand", "w": 1.0 }, { "t": "together", "w": 1.0 },
+        { "t": "help", "w": 0.9 }, { "t": "relationship", "w": 1.1 },
+
+        { "t": "支持", "w": 1.1 }, { "t": "信任", "w": 1.1 },
+        { "t": "理解", "w": 1.0 }, { "t": "一起", "w": 1.0 },
+        { "t": "帮助", "w": 0.9 }, { "t": "关系", "w": 1.1 }
+      ],
+
+      "introvert": [
+        { "t": "maybe", "w": 0.8 }, { "t": "not sure", "w": 1.0 },
+        { "t": "need time", "w": 1.1 }, { "t": "consider", "w": 0.9 },
+        { "t": "later", "w": 0.9 }, { "t": "wait", "w": 0.9 },
+
+        { "t": "不确定", "w": 1.0 }, { "t": "需要时间", "w": 1.1 },
+        { "t": "再想想", "w": 0.9 }, { "t": "等等", "w": 0.9 }
+      ],
+
+      "extrovert": [
+        { "t": "let's", "w": 1.0 }, { "t": "must", "w": 1.2 },
+        { "t": "do it now", "w": 1.3 }, { "t": "definitely", "w": 1.0 },
+        { "t": "stop", "w": 1.1 },
+
+        { "t": "必须", "w": 1.2 }, { "t": "立刻", "w": 1.3 },
+        { "t": "马上做", "w": 1.3 }, { "t": "别再", "w": 1.1 }
+      ]
+    },
+
+    "energy": {
+      "positive": [
+        { "t": "respect", "w": 1.1 }, { "t": "clarify", "w": 1.0 },
+        { "t": "align", "w": 0.9 }, { "t": "step by step", "w": 1.0 },
+        { "t": "i'll take responsibility", "w": 1.2 },
+
+        { "t": "尊重", "w": 1.1 }, { "t": "澄清", "w": 1.0 },
+        { "t": "对齐", "w": 0.9 }, { "t": "一步一步", "w": 1.0 },
+        { "t": "我来负责", "w": 1.2 }
+      ],
+
+      "negative": [
+        { "t": "whatever", "w": 1.1 }, { "t": "doesn't matter", "w": 1.2 },
+        { "t": "i don't mind", "w": 1.1 }, { "t": "later", "w": 0.9 },
+        { "t": "avoid", "w": 1.1 },
+
+        { "t": "随便", "w": 1.1 }, { "t": "无所谓", "w": 1.2 },
+        { "t": "我都行", "w": 1.1 }, { "t": "回避", "w": 1.1 }
+      ],
+
+      "neurotic": [
+        { "t": "always", "w": 1.2 }, { "t": "never", "w": 1.2 },
+        { "t": "my way or", "w": 1.4 }, { "t": "i don't care", "w": 1.3 },
+        { "t": "idiot", "w": 1.5 }, { "t": "i deserve", "w": 1.3 },
+
+        { "t": "总是", "w": 1.2 }, { "t": "从不", "w": 1.2 },
+        { "t": "要么就", "w": 1.4 }, { "t": "我不在乎", "w": 1.3 },
+        { "t": "蠢", "w": 1.5 }, { "t": "我应得", "w": 1.3 }
+      ]
+    }
+  },
+
+  "entries": [
+    { "id": "EXPERT_POSITIVE",   "quadrant": "EXPERT",   "energy": "POSITIVE",
+      "core": [{ "t": "fact-based", "w": 1.0 }, { "t": "prudent", "w": 0.8 }] },
+
+    { "id": "EXPERT_NEGATIVE",   "quadrant": "EXPERT",   "energy": "NEGATIVE",
+      "core": [{ "t": "avoidant", "w": 1.0 }, { "t": "delay decision", "w": 0.9 }] },
+
+    { "id": "EXPERT_NEUROTIC",   "quadrant": "EXPERT",   "energy": "NEUROTIC",
+      "core": [{ "t": "procrastinate", "w": 1.1 }] },
+
+    { "id": "SUPPORTER_POSITIVE","quadrant": "SUPPORTER","energy": "POSITIVE",
+      "core": [{ "t": "supportive", "w": 1.0 }, { "t": "trusting", "w": 1.0 }] },
+
+    { "id": "SUPPORTER_NEGATIVE","quadrant": "SUPPORTER","energy": "NEGATIVE",
+      "core": [{ "t": "people-pleasing", "w": 1.1 }] },
+
+    { "id": "SUPPORTER_NEUROTIC","quadrant": "SUPPORTER","energy": "NEUROTIC",
+      "core": [{ "t": "self-erasing", "w": 1.1 }] },
+
+    { "id": "LEADER_POSITIVE",  "quadrant": "LEADER",  "energy": "POSITIVE",
+      "core": [{ "t": "decisive", "w": 1.0 }, { "t": "results-driven", "w": 1.0 }] },
+
+    { "id": "LEADER_NEGATIVE",  "quadrant": "LEADER",  "energy": "NEGATIVE",
+      "core": [{ "t": "domineering", "w": 1.0 }] },
+
+    { "id": "LEADER_NEUROTIC",  "quadrant": "LEADER",  "energy": "NEUROTIC",
+      "core": [{ "t": "my way or", "w": 1.4 }] },
+
+    { "id": "DREAMER_POSITIVE", "quadrant": "DREAMER", "energy": "POSITIVE",
+      "core": [{ "t": "inspiring", "w": 1.0 }, { "t": "enthusiastic", "w": 0.9 }] },
+
+    { "id": "DREAMER_NEGATIVE", "quadrant": "DREAMER", "energy": "NEGATIVE",
+      "core": [{ "t": "attention-seeking", "w": 1.0 }] },
+
+    { "id": "DREAMER_NEUROTIC", "quadrant": "DREAMER", "energy": "NEUROTIC",
+      "core": [{ "t": "narcissistic", "w": 1.2 }] }
+  ]
+}

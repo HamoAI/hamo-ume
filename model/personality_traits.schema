@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hamo.ai/schemas/psvs/personality_traits_lexicon.schema.json",
+  "title": "PSVS Personality Traits Lexicon (Quadrant + Energy State)",
+  "type": "object",
+  "required": ["version", "language", "axes", "quadrants", "energy_states", "signals", "entries", "scoring"],
+  "properties": {
+    "version": { "type": "string", "pattern": "^v\\d+\\.\\d+\\.\\d+$" },
+    "language": { "type": "string", "enum": ["en", "zh", "en-zh"] },
+
+    "axes": {
+      "type": "object",
+      "required": ["x", "y"],
+      "properties": {
+        "x": {
+          "type": "object",
+          "required": ["name", "neg_pole", "pos_pole"],
+          "properties": {
+            "name": { "type": "string", "const": "orientation" },
+            "neg_pole": { "type": "string", "const": "introvert" },
+            "pos_pole": { "type": "string", "const": "extrovert" }
+          }
+        },
+        "y": {
+          "type": "object",
+          "required": ["name", "neg_pole", "pos_pole"],
+          "properties": {
+            "name": { "type": "string", "const": "focus" },
+            "neg_pole": { "type": "string", "const": "people" },
+            "pos_pole": { "type": "string", "const": "task" }
+          }
+        }
+      }
+    },
+
+    "quadrants": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "x_pole", "y_pole", "description"],
+        "properties": {
+          "id": { "type": "string", "enum": ["EXPERT", "SUPPORTER", "LEADER", "DREAMER"] },
+          "label": { "type": "string" },
+          "x_pole": { "type": "string", "enum": ["introvert", "extrovert"] },
+          "y_pole": { "type": "string", "enum": ["task", "people"] },
+          "description": { "type": "string" }
+        }
+      }
+    },
+
+    "energy_states": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "ring"],
+        "properties": {
+          "id": { "type": "string", "enum": ["POSITIVE", "NEGATIVE", "NEUROTIC"] },
+          "label": { "type": "string" },
+          "ring": { "type": "string", "enum": ["orange", "gray", "red"] }
+        }
+      }
+    },
+
+    "signals": {
+      "type": "object",
+      "required": ["quadrant", "energy"],
+      "properties": {
+        "quadrant": {
+          "type": "object",
+          "required": ["task", "people", "introvert", "extrovert"],
+          "properties": {
+            "task": { "$ref": "#/$defs/weighted_terms" },
+            "people": { "$ref": "#/$defs/weighted_terms" },
+            "introvert": { "$ref": "#/$defs/weighted_terms" },
+            "extrovert": { "$ref": "#/$defs/weighted_terms" }
+          }
+        },
+        "energy": {
+          "type": "object",
+          "required": ["positive", "negative", "neurotic"],
+          "properties": {
+            "positive": { "$ref": "#/$defs/weighted_terms" },
+            "negative": { "$ref": "#/$defs/weighted_terms" },
+            "neurotic": { "$ref": "#/$defs/weighted_terms" }
+          }
+        }
+      }
+    },
+
+    "entries": {
+      "type": "array",
+      "minItems": 12,
+      "items": {
+        "type": "object",
+        "required": ["id", "quadrant", "energy_state", "core_traits"],
+        "properties": {
+          "id": { "type": "string" },
+          "quadrant": { "type": "string", "enum": ["EXPERT", "SUPPORTER", "LEADER", "DREAMER"] },
+          "energy_state": { "type": "string", "enum": ["POSITIVE", "NEGATIVE", "NEUROTIC"] },
+          "core_traits": { "$ref": "#/$defs/weighted_terms" }
+        }
+      }
+    },
+
+    "scoring": {
+      "type": "object",
+      "required": ["match", "quadrant_rule", "energy_rule", "neurotic_strong_terms"],
+      "properties": {
+        "match": {
+          "type": "object",
+          "required": ["mode", "case_insensitive"],
+          "properties": {
+            "mode": { "type": "string", "enum": ["substring_or_phrase", "regex"] },
+            "case_insensitive": { "type": "boolean" }
+          }
+        },
+        "quadrant_rule": { "type": "string" },
+        "energy_rule": { "type": "string" },
+        "neurotic_strong_terms": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  },
+
+  "$defs": {
+    "weighted_terms": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["t", "w"],
+        "properties": {
+          "t": { "type": "string", "minLength": 1 },
+          "w": { "type": "number", "minimum": 0, "maximum": 2 }
+        }
+      }
+    }
+  }
+}

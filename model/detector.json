@@ -1,0 +1,35 @@
+{
+  "quadrant": "LEADER",
+  "energy_state": "NEUROTIC",
+  "confidence": 0.86,
+  "evidence": {
+    "matches": [
+      { "t": "do it now", "w": 1.3, "type": "quadrant.extrovert" },
+      { "t": "must", "w": 1.2, "type": "quadrant.extrovert" },
+      { "t": "my way or", "w": 1.4, "type": "energy.neurotic" },
+      { "t": "result", "w": 1.0, "type": "quadrant.task" }
+    ],
+    "top_reason": "High extrovert + high task + neurotic strong term"
+  },
+  "scores": {
+    "quadrant_axes": {
+      "task": 2.0,
+      "people": 0.0,
+      "introvert": 0.0,
+      "extrovert": 2.5,
+      "x_extrovert_minus_introvert": 2.5,
+      "y_task_minus_people": 2.0
+    },
+    "energy": {
+      "positive": 0.0,
+      "negative": 0.0,
+      "neurotic": 1.4,
+      "neurotic_strong_hit": true
+    },
+    "entries": [
+      { "id": "LEADER_NEUROTIC", "score": 3.1 },
+      { "id": "LEADER_NEGATIVE", "score": 1.2 },
+      { "id": "EXPERT_NEUROTIC", "score": 0.4 }
+    ]
+  }
+}

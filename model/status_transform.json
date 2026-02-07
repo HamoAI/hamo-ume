@@ -1,0 +1,35 @@
+{
+  "version": "v1.0.0",
+  "docs": {
+    "A": "Agency / Action Capacity: action-oriented, responsibility-taking, and plan articulation (e.g., proposing next steps, owning decisions). Higher A pulls state toward POSITIVE.",
+    "W": "Withdrawal / Avoidance: disengagement, delay, defaulting, and relinquishing choice/control (e.g., 'whatever', 'you decide', 'later'). Higher W pushes state toward NEGATIVE.",
+    "E": "Extremity / Absolutism: rigid all-or-nothing framing (e.g., always/never/everyone/no one; 二元化/绝对化). Higher E escalates toward NEUROTIC.",
+    "H": "Hostility / Coercion: coercive control, threats, insults, boundary violations, forced framing (e.g., 'my way or', 'do it now', 人身攻击/要挟). Higher H strongly escalates toward NEUROTIC.",
+    "B": "Boundary & Respect: scope/constraint clarification, respectful framing, alignment language, conditionality (e.g., clarify scope, respect, align). Higher B restores stability toward POSITIVE."
+  },
+  "state_machine": {
+    "states": ["POSITIVE", "NEGATIVE", "NEUROTIC"],
+    "stress": { "min": 0, "max": 10, "init": 1.5 },
+    "update": {
+      "formula": "S = clamp(S + 0.9*W + 1.2*E + 1.6*H - 1.0*A - 1.1*B, 0, 10)"
+    },
+    "thresholds": {
+      "POSITIVE_to_NEGATIVE": 4.0,
+      "NEGATIVE_to_NEUROTIC": 7.0,
+      "NEGATIVE_to_POSITIVE": { "S_le": 2.5, "AB_ge": 1.8 },
+      "NEUROTIC_to_NEGATIVE": { "k": 2, "H_lt": 0.8, "E_lt": 0.8 },
+      "NEUROTIC_to_POSITIVE": { "via": "NEGATIVE_only" }
+    },
+    "fast_paths": [
+      { "from": "POSITIVE", "to": "NEUROTIC", "if": "H >= 1.6" },
+      { "from": "POSITIVE", "to": "NEUROTIC", "if": "E >= 1.2 && W >= 1.0" },
+      { "from": "NEGATIVE", "to": "NEUROTIC", "if": "H >= 1.6" }
+    ]
+  },
+  "quadrant_modifiers": {
+    "EXPERT":   { "W": 1.2, "H_fastpath": 1.3 },
+    "SUPPORTER":{ "W": 1.3, "W_chain_to_red": { "k": 2, "W_ge": 1.6 } },
+    "LEADER":   { "H": 1.2, "A": 1.2 },
+    "DREAMER":  { "E": 1.2, "H": 1.2, "B": 1.2 }
+  }
+}
