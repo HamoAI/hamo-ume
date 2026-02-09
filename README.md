@@ -1,10 +1,14 @@
 # Hamo-UME (Unified Mind Engine)
 
+> *"Every Therapist Avatar has a Real AI Mind"*
+>
 > Backend API Server for the Hamo AI Therapy Platform
 
+[![Version](https://img.shields.io/badge/Version-1.4.6-brightgreen.svg)]()
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.109+-green.svg)](https://fastapi.tiangolo.com)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Updated](https://img.shields.io/badge/Updated-February%202026-lightgrey.svg)]()
 
 ## Overview
 
