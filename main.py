@@ -2033,19 +2033,35 @@ async def start_conversation_session(
     else:
         current_position = PSVSCoordinates(**psvs_profile_data["current_position"])
 
-    # Create session
-    session_id = str(uuid.uuid4())
-    session = ConversationSession(
-        id=session_id,
-        mind_id=mind_id,
-        avatar_id=avatar_id,
-        user_id=current_user.id,
-        started_at=datetime.now(),
-        message_count=0,
-        is_active=True
-    )
+    # Check if an active session already exists for this mind + avatar + user
+    existing_sessions = db.get_sessions_by_mind(mind_id)
+    active_session = None
 
-    db.create_session(session.model_dump())
+    for sess in existing_sessions:
+        if (sess.get("avatar_id") == avatar_id and
+            sess.get("user_id") == current_user.id and
+            sess.get("is_active", False)):
+            active_session = sess
+            break
+
+    if active_session:
+        # Reuse existing session
+        session_id = active_session["id"]
+        print(f"✅ Reusing existing session: {session_id}")
+    else:
+        # Create new session
+        session_id = str(uuid.uuid4())
+        session = ConversationSession(
+            id=session_id,
+            mind_id=mind_id,
+            avatar_id=avatar_id,
+            user_id=current_user.id,
+            started_at=datetime.now(),
+            message_count=0,
+            is_active=True
+        )
+        db.create_session(session.model_dump())
+        print(f"✅ Created new session: {session_id}")
 
     return SessionStartResponse(
         session_id=session_id,
