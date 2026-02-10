@@ -626,6 +626,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",           # 本地开发
+        "http://localhost:5175",           # 本地开发备用端口
         "http://localhost:3000",           # 本地开发备用端口
         "https://hamo-pro.vercel.app",     # Vercel 生产环境 - Pro
         "https://hamo-client.vercel.app",  # Vercel 生产环境 - Client
