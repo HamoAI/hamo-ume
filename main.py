@@ -2231,9 +2231,7 @@ async def get_sessions_by_mind(mind_id: str, current_user: UserInDB = Depends(ge
 
     sessions_data = db.get_sessions_by_mind(mind_id)
 
-    # If therapist is viewing, filter out sessions marked as not visible to Pro
-    if current_user.role == UserRole.THERAPIST:
-        sessions_data = [s for s in sessions_data if s.get("pro_visible", True)]
+    # Return all sessions with pro_visible field, let frontend handle display logic
 
     # Sort by started_at descending (newest first)
     sessions_data.sort(key=lambda x: x.get("started_at", ""), reverse=True)
