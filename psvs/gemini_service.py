@@ -128,57 +128,90 @@ def analyze_message_for_stress(message: str) -> Dict[str, float]:
     }
 
     # Agency indicators (positive actions, taking responsibility)
-    agency_patterns = [
+    agency_patterns_en = [
         r"\b(i will|i'll|i'm going to|i plan to|i'm taking|i decided|i choose)\b",
         r"\b(my responsibility|i can|i'm able to|let me|i'll handle)\b",
         r"\b(step by step|next step|action plan|i'll start|i'm working on)\b",
-        r"\b(我会|我要|我打算|我决定|我选择|我能|我来)\b",
     ]
-    for pattern in agency_patterns:
+    agency_patterns_zh = [
+        r"(我会|我要|我打算|我决定|我选择|我能|我来|我试试|我愿意)",
+    ]
+    for pattern in agency_patterns_en:
+        if re.search(pattern, message_lower):
+            scores["A"] += 0.5
+    for pattern in agency_patterns_zh:
         if re.search(pattern, message_lower):
             scores["A"] += 0.5
 
     # Withdrawal indicators (avoidance, delay, disengagement)
-    withdrawal_patterns = [
+    withdrawal_patterns_en = [
         r"\b(whatever|doesn't matter|don't care|i don't mind|not sure|maybe later)\b",
         r"\b(avoid|ignore|put off|delay|postpone|can't deal|too hard)\b",
         r"\b(i give up|no point|why bother|hopeless|helpless)\b",
-        r"\b(随便|无所谓|不在乎|算了|懒得|回避|拖延)\b",
     ]
-    for pattern in withdrawal_patterns:
+    withdrawal_patterns_zh = [
+        r"(随便|无所谓|不在乎|算了|懒得|回避|拖延|不想说|不想聊|别管我)",
+    ]
+    for pattern in withdrawal_patterns_en:
+        if re.search(pattern, message_lower):
+            scores["W"] += 0.6
+    for pattern in withdrawal_patterns_zh:
         if re.search(pattern, message_lower):
             scores["W"] += 0.6
 
     # Extremity indicators (all-or-nothing, absolutism)
-    extremity_patterns = [
+    extremity_patterns_en = [
         r"\b(always|never|everyone|no one|everything|nothing|all or)\b",
         r"\b(completely|totally|absolutely|must|can't|impossible)\b",
         r"\b(every time|all the time|nobody|everybody)\b",
-        r"\b(总是|从不|所有人|没人|一切|什么都|绝对|必须|不可能)\b",
     ]
-    for pattern in extremity_patterns:
+    # Chinese extremity - no \b word boundary (doesn't work for CJK)
+    extremity_patterns_zh = [
+        r"(总是|从不|所有人|没人|一切|什么都|绝对|必须|不可能)",
+        r"(永远|从来|根本|完全|全部|任何|每次|再也)",
+    ]
+    for pattern in extremity_patterns_en:
+        matches = len(re.findall(pattern, message_lower))
+        scores["E"] += min(matches * 0.4, 2.0)
+    for pattern in extremity_patterns_zh:
         matches = len(re.findall(pattern, message_lower))
         scores["E"] += min(matches * 0.4, 2.0)
 
     # Hostility indicators (coercion, threats, insults, attacks)
-    hostility_patterns = [
+    hostility_patterns_en = [
         r"\b(my way or|do it now|you must|you have to|shut up|stupid|idiot)\b",
         r"\b(i hate|i'll make you|you better|or else|threaten)\b",
         r"\b(pathetic|worthless|useless|disgusting|piece of)\b",
-        r"\b(要么|必须|闭嘴|蠢|白痴|恨|威胁|废物|垃圾)\b",
+        r"\b(fuck|shit|damn|ass|hell|crap|dick|bitch|bastard|screw you)\b",
     ]
-    for pattern in hostility_patterns:
+    # Chinese hostility - no \b word boundary (doesn't work for CJK)
+    hostility_patterns_zh = [
+        r"(他妈|妈的|你妈|老子|滚蛋|滚|去死|死去)",
+        r"(操|艹|靠|屁|妈逼|傻逼|牛逼|装逼|逼)",
+        r"(混蛋|王八|狗屎|放屁|扯淡|狗日|畜生|贱人|婊子)",
+        r"(白痴|蠢|废物|垃圾|闭嘴|恨|威胁|要么|必须)",
+        r"(神经病|有病|脑残|智障|弱智|变态|恶心|无耻|不要脸)",
+    ]
+    for pattern in hostility_patterns_en:
         if re.search(pattern, message_lower):
             scores["H"] += 1.0  # High weight for hostility
+    for pattern in hostility_patterns_zh:
+        matches = len(re.findall(pattern, message_lower))
+        scores["H"] += min(matches * 1.0, 2.0)  # High weight, cap at 2.0 per pattern
 
     # Boundary indicators (respect, clarification, alignment)
-    boundary_patterns = [
+    boundary_patterns_en = [
         r"\b(respect|clarify|understand|align|boundary|scope|clear)\b",
         r"\b(let's discuss|can we talk|i'd like to|what if|help me understand)\b",
         r"\b(i need|i feel|from my perspective|it seems)\b",
-        r"\b(尊重|澄清|理解|边界|范围|讨论|我需要|我觉得)\b",
     ]
-    for pattern in boundary_patterns:
+    boundary_patterns_zh = [
+        r"(尊重|澄清|理解|边界|范围|讨论|我需要|我觉得|我希望|我想要)",
+    ]
+    for pattern in boundary_patterns_en:
+        if re.search(pattern, message_lower):
+            scores["B"] += 0.4
+    for pattern in boundary_patterns_zh:
         if re.search(pattern, message_lower):
             scores["B"] += 0.4
 
